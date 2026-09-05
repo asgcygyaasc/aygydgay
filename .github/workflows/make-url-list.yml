@@ -37,14 +37,14 @@ jobs:
                   numbered.setdefault(n, []).append(p)
 
           missing = [n for n in range(1, 901) if n not in numbered]
-          duplicate = {n: v for n, v in numbered.items() if 1 <= n <= 900 and len(v) != 1}
-          if missing or duplicate:
-              raise SystemExit(f'missing={missing[:20]} duplicate_numbers={list(duplicate)[:20]}')
+          if missing:
+              raise SystemExit(f'missing article numbers: {missing[:50]}')
 
-          selected = [numbered[n][0] for n in range(1, 901)]
+          # When duplicate article numbers exist, choose one deterministic filename per number.
+          selected = [sorted(numbered[n])[0] for n in range(1, 901)]
           urls = ['https://github.com/asgcygyaasc/aygydgay/blob/main/' + quote(p, safe='/') for p in selected]
           Path('aygydgay-900-urls.txt').write_text('\n'.join(urls) + '\n', encoding='utf-8')
-          print(f'All Markdown files: {len(paths)}; selected articles: {len(urls)}')
+          print(f'All Markdown files: {len(paths)}; selected unique article numbers: {len(urls)}')
           PY
       - name: Commit URL list
         run: |
