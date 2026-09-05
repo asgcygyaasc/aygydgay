@@ -40,12 +40,17 @@ jobs:
           if missing:
               raise SystemExit(f'missing article numbers: {missing[:50]}')
 
-          # When duplicate article numbers exist, choose one deterministic filename per number.
           selected = [sorted(numbered[n])[0] for n in range(1, 901)]
           urls = ['https://github.com/asgcygyaasc/aygydgay/blob/main/' + quote(p, safe='/') for p in selected]
           Path('aygydgay-900-urls.txt').write_text('\n'.join(urls) + '\n', encoding='utf-8')
           print(f'All Markdown files: {len(paths)}; selected unique article numbers: {len(urls)}')
           PY
+      - name: Upload TXT artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aygydgay-900-urls
+          path: aygydgay-900-urls.txt
+          if-no-files-found: error
       - name: Commit URL list
         run: |
           git config user.name 'github-actions[bot]'
