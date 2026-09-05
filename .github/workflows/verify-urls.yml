@@ -39,20 +39,30 @@ jobs:
           Path('urls.txt').write_text('\n'.join(urls)+'\n',encoding='utf-8')
           print('Generated',len(urls),'URLs')
           PY
-          : > results.tsv
-          while IFS= read -r url; do
-            code=$(curl -L -sS --max-time 20 -o /dev/null -w '%{http_code}' -A 'Mozilla/5.0' "$url" || echo ERR)
-            printf '%s\t%s\n' "$code" "$url" >> results.tsv
-          done < urls.txt
-          bad=$(awk -F '\t' '$1 != "200" {c++} END {print c+0}' results.tsv)
-          total=$(wc -l < urls.txt)
-          ok=$(awk -F '\t' '$1 == "200" {c++} END {print c+0}' results.tsv)
-          echo "TOTAL=$total OK=$ok BAD=$bad"
-          if [ "$bad" -ne 0 ]; then
-            echo '--- Non-200 URLs ---'
-            awk -F '\t' '$1 != "200" {print}' results.tsv
-            exit 1
-          fi
+          python3 - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          from urllib.request import Request, urlopen
+          from pathlib import Path
+          urls=[x for x in Path('urls.txt').read_text(encoding='utf-8').splitlines() if x]
+          def check(url):
+              try:
+                  req=Request(url,headers={'User-Agent':'Mozilla/5.0'})
+                  with urlopen(req,timeout=15) as r:
+                      return r.status,url
+              except Exception as e:
+                  return 'ERR:'+type(e).__name__,url
+          results=[]
+          with ThreadPoolExecutor(max_workers=30) as ex:
+              futures=[ex.submit(check,u) for u in urls]
+              for f in as_completed(futures): results.append(f.result())
+          results.sort(key=lambda x:x[1])
+          Path('results.tsv').write_text('\n'.join(f'{c}\t{u}' for c,u in results)+'\n',encoding='utf-8')
+          bad=[(c,u) for c,u in results if c!=200]
+          ok=sum(c==200 for c,u in results)
+          print(f'TOTAL={len(results)} OK={ok} BAD={len(bad)}')
+          for c,u in bad: print(c,u)
+          if bad: raise SystemExit(1)
+          PY
       - name: Save verification report
         if: always()
         uses: actions/upload-artifact@v4
