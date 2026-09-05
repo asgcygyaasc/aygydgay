@@ -1,0 +1,63 @@
+name: Verify 900 GitHub URLs
+
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-urls.yml'
+      - 'verify-900-urls.txt'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify every generated URL resolves
+        shell: bash
+        run: |
+          set -u
+          git ls-tree -r --name-only HEAD > files.txt
+          python3 - <<'PY'
+          import re, urllib.parse
+          from pathlib import Path
+          files=[x for x in Path('files.txt').read_text().splitlines() if x.endswith('.md') and x!='README.md']
+          chosen={}
+          for f in files:
+              m=re.search(r'第(\d+)篇\.md$', f)
+              if m:
+                  n=int(m.group(1))
+                  if 1<=n<=900:
+                      chosen[n]=min(chosen.get(n,f),f)
+          missing=[n for n in range(1,901) if n not in chosen]
+          if missing:
+              print('MISSING_ARTICLE_NUMBERS', missing)
+              raise SystemExit(2)
+          urls=[]
+          for n in range(1,901):
+              f=chosen[n]
+              urls.append('https://github.com/asgcygyaasc/aygydgay/blob/main/'+urllib.parse.quote(f,safe='/'))
+          Path('urls.txt').write_text('\n'.join(urls)+'\n',encoding='utf-8')
+          print('Generated',len(urls),'URLs')
+          PY
+          : > results.tsv
+          while IFS= read -r url; do
+            code=$(curl -L -sS --max-time 20 -o /dev/null -w '%{http_code}' -A 'Mozilla/5.0' "$url" || echo ERR)
+            printf '%s\t%s\n' "$code" "$url" >> results.tsv
+          done < urls.txt
+          bad=$(awk -F '\t' '$1 != "200" {c++} END {print c+0}' results.tsv)
+          total=$(wc -l < urls.txt)
+          ok=$(awk -F '\t' '$1 == "200" {c++} END {print c+0}' results.tsv)
+          echo "TOTAL=$total OK=$ok BAD=$bad"
+          if [ "$bad" -ne 0 ]; then
+            echo '--- Non-200 URLs ---'
+            awk -F '\t' '$1 != "200" {print}' results.tsv
+            exit 1
+          fi
+      - name: Save verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-900-urls-report
+          path: |
+            urls.txt
+            results.tsv
+          retention-days: 1
