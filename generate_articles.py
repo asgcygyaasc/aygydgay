@@ -1,5 +1,5 @@
 from pathlib import Path
-import argparse
+import re
 
 ROOT = Path(__file__).parent
 OUT = ROOT
@@ -17,7 +17,12 @@ OPENERS = [
 POINTS = ["先看账号基础资料", "再检查登录环境", "确认绑定信息", "核对隐私权限", "查看安全提醒", "整理常用设备", "处理异常提示", "做好日常维护"]
 
 def make_title(i, keyword):
-    return f"{LEADS[i % 30]}：{TOPICS[(i // 30) % 30]}【{keyword}】{TAILS[(i // 900) % len(TAILS)]}第{i+1}篇"
+    return f"{LEADS[i % len(LEADS)]}：{TOPICS[(i // len(LEADS)) % len(TOPICS)]}【{keyword}】{TAILS[(i // (len(LEADS) * len(TOPICS))) % len(TAILS)]}第{i+1}篇"
+
+def safe_filename(title):
+    # GitHub允许中文文件名；去掉Windows和URL中容易产生问题的字符，并保持标题可读。
+    name = re.sub(r'[\\/:*?"<>|]', '-', title).strip().strip('.')
+    return f"{name}.md"
 
 def para(i, n, keyword):
     base = OPENERS[(i + n * 3) % len(OPENERS)].replace("【关键词】", f"【{keyword}】")
@@ -58,10 +63,10 @@ def load_keywords():
     return values
 
 def main():
-    argparse.ArgumentParser().parse_args()
     kws = load_keywords()
     for i in range(900):
-        (OUT / f"{i+1:04d}.md").write_text(make_article(i, kws[i % len(kws)]), encoding="utf-8")
-    print(f"generated 900 articles using {len(kws)} keywords in a round-robin cycle")
+        title = make_title(i, kws[i % len(kws)])
+        (OUT / safe_filename(title)).write_text(make_article(i, kws[i % len(kws)]), encoding="utf-8")
+    print(f"generated 900 title-named articles using {len(kws)} keywords in a round-robin cycle")
 
 if __name__ == "__main__": main()
