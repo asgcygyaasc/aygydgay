@@ -1,0 +1,46 @@
+name: Generate article URL list
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Generate exact GitHub blob URLs
+        shell: python
+        run: |
+          import subprocess
+          from urllib.parse import quote
+          from pathlib import Path
+
+          names = subprocess.check_output(
+              ['git', 'ls-tree', '-r', '--name-only', 'HEAD'], text=True
+          ).splitlines()
+          files = sorted(
+              p for p in names
+              if p.endswith('.md') and p != 'README.md'
+          )
+          if len(files) != 900:
+              raise SystemExit(f'Expected exactly 900 article Markdown files, found {len(files)}')
+
+          urls = [
+              'https://github.com/asgcygyaasc/aygydgay/blob/main/' + quote(p, safe='/')
+              for p in files
+          ]
+          Path('aygydgay-900-urls.txt').write_text('\n'.join(urls) + '\n', encoding='utf-8')
+          print(f'Generated {len(urls)} URLs')
+      - name: Commit URL list
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add aygydgay-900-urls.txt
+          git diff --cached --quiet || git commit -m 'Generate 900 article URLs'
+          git push
