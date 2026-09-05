@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Generate exact GitHub blob URLs
+      - name: Generate exact 900 GitHub blob URLs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -23,17 +23,28 @@ jobs:
             --jq '.[] | select(.type == "file" and (.name | endswith(".md")) and .name != "README.md") | .path' \
             > article-paths.txt
 
-          count=$(wc -l < article-paths.txt)
-          echo "Found $count article Markdown files"
-          test "$count" -eq 900
-
           python - <<'PY'
           from pathlib import Path
           from urllib.parse import quote
+          import re
+
           paths = [x.strip() for x in Path('article-paths.txt').read_text(encoding='utf-8').splitlines() if x.strip()]
-          urls = ['https://github.com/asgcygyaasc/aygydgay/blob/main/' + quote(p, safe='/') for p in sorted(paths)]
+          numbered = {}
+          for p in paths:
+              m = re.search(r'第(\d+)篇\.md$', p)
+              if m:
+                  n = int(m.group(1))
+                  numbered.setdefault(n, []).append(p)
+
+          missing = [n for n in range(1, 901) if n not in numbered]
+          duplicate = {n: v for n, v in numbered.items() if 1 <= n <= 900 and len(v) != 1}
+          if missing or duplicate:
+              raise SystemExit(f'missing={missing[:20]} duplicate_numbers={list(duplicate)[:20]}')
+
+          selected = [numbered[n][0] for n in range(1, 901)]
+          urls = ['https://github.com/asgcygyaasc/aygydgay/blob/main/' + quote(p, safe='/') for p in selected]
           Path('aygydgay-900-urls.txt').write_text('\n'.join(urls) + '\n', encoding='utf-8')
-          print(f'Generated {len(urls)} URLs')
+          print(f'All Markdown files: {len(paths)}; selected articles: {len(urls)}')
           PY
       - name: Commit URL list
         run: |
