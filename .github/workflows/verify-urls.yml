@@ -15,11 +15,12 @@ jobs:
         shell: bash
         run: |
           set -u
+          git config core.quotePath false
           git ls-tree -r --name-only HEAD > files.txt
           python3 - <<'PY'
           import re, urllib.parse
           from pathlib import Path
-          files=[x for x in Path('files.txt').read_text().splitlines() if x.endswith('.md') and x!='README.md']
+          files=[x for x in Path('files.txt').read_text(encoding='utf-8').splitlines() if x.endswith('.md') and x!='README.md']
           chosen={}
           for f in files:
               m=re.search(r'第(\d+)篇\.md$', f)
