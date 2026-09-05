@@ -16,8 +16,8 @@ OPENERS = [
 ]
 POINTS = ["先看账号基础资料", "再检查登录环境", "确认绑定信息", "核对隐私权限", "查看安全提醒", "整理常用设备", "处理异常提示", "做好日常维护"]
 
-def make_title(i):
-    return f"{LEADS[i % 30]}：{TOPICS[(i // 30) % 30]}【关键词】{TAILS[(i // 900) % len(TAILS)]}第{i+1}篇"
+def make_title(i, keyword):
+    return f"{LEADS[i % 30]}：{TOPICS[(i // 30) % 30]}【{keyword}】{TAILS[(i // 900) % len(TAILS)]}第{i+1}篇"
 
 def para(i, n, keyword):
     base = OPENERS[(i + n * 3) % len(OPENERS)].replace("【关键词】", f"【{keyword}】")
@@ -25,7 +25,7 @@ def para(i, n, keyword):
     return base + extra
 
 def make_article(i, keyword):
-    title = make_title(i)
+    title = make_title(i, keyword)
     layout = i % 6
     parts = [TG, "", f"# {title}", ""]
     if layout == 0:
